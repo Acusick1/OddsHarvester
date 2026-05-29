@@ -373,6 +373,10 @@ class SportMarketRegistrar:
         # Over/Under Markets
         for over_under in BaseballOverUnderMarket:
             numeric_part = over_under.value.replace("over_under_", "").replace("_", ".")
+            # OddsPortal renders whole-number baseball totals without the trailing
+            # ".0" (e.g. "Over/Under +8", not "Over/Under +8.0").
+            if numeric_part.endswith(".0"):
+                numeric_part = numeric_part[:-2]
             SportMarketRegistry.register(
                 Sport.BASEBALL,
                 {

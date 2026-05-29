@@ -236,6 +236,21 @@ class TestSportMarketRegistrar:
         # Over/Under markets
         assert "over_under_7_5" in baseball_markets
 
+    def test_register_baseball_over_under_label_strips_trailing_zero(self):
+        """Whole-number baseball totals render without a trailing '.0' (OddsPortal style)."""
+        SportMarketRegistrar.register_baseball_markets()
+        baseball_markets = SportMarketRegistry.get_market_mapping(Sport.BASEBALL.value)
+
+        def captured_specific_market(market_key: str) -> str:
+            extractor = MagicMock()
+            baseball_markets[market_key](extractor, page=MagicMock())
+            return extractor.extract_market_odds.call_args.kwargs["specific_market"]
+
+        # Whole number: no trailing ".0"
+        assert captured_specific_market("over_under_8_0") == "Over/Under +8"
+        # Half number: decimal preserved
+        assert captured_specific_market("over_under_7_5") == "Over/Under +7.5"
+
     def test_register_american_football_markets(self):
         """Test registering markets for American Football."""
         # Act
