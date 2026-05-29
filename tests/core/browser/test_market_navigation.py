@@ -30,6 +30,17 @@ class TestMarketTabNavigator:
             assert result is True
 
     @pytest.mark.asyncio
+    async def test_navigate_to_market_tab_no_odds_tabs(self, navigator, mock_page):
+        """Navigation short-circuits when the odds-tabs container is absent."""
+        mock_page.query_selector = AsyncMock(return_value=None)
+
+        with patch.object(navigator, "_wait_and_click", return_value=True) as wait_and_click:
+            result = await navigator.navigate_to_tab(mock_page, "Draw No Bet")
+
+        assert result is False
+        wait_and_click.assert_not_called()
+
+    @pytest.mark.asyncio
     async def test_navigate_to_market_tab_success_dropdown(self, navigator, mock_page):
         """Test successful market tab navigation (via dropdown)."""
         # Mock failed direct navigation but successful dropdown navigation
@@ -187,6 +198,18 @@ class TestMarketTabNavigator:
 
         result = await navigator._click_more_if_market_hidden(mock_page, "Draw No Bet")
         assert result is False
+
+    @pytest.mark.asyncio
+    async def test_click_more_if_market_hidden_rejects_long_text(self, navigator, mock_page):
+        """A 'More'-matching element with excessively long text is not treated as the button."""
+        mock_more_element = AsyncMock()
+        # Contains "more" but is clearly a paragraph, not the dropdown toggle.
+        mock_more_element.text_content.return_value = "Read more about our responsible gambling policy and terms here"
+        mock_page.query_selector.return_value = mock_more_element
+
+        result = await navigator._click_more_if_market_hidden(mock_page, "Draw No Bet")
+        assert result is False
+        mock_more_element.click.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_click_more_if_market_hidden_more_button_click_error(self, navigator, mock_page):

@@ -27,6 +27,10 @@ class MarketTabNavigator:
         """
         self.logger.info(f"Attempting to navigate to market tab: {market_tab_name}")
 
+        if not await page.query_selector("ul.odds-tabs"):
+            self.logger.warning(f"No odds tabs found on page — skipping market tab navigation for {market_tab_name}")
+            return False
+
         market_found = False
         for selector in OddsPortalSelectors.MARKET_TAB_SELECTORS:
             if await self._wait_and_click(page=page, selector=selector, text=market_tab_name, timeout=timeout):
@@ -74,7 +78,7 @@ class MarketTabNavigator:
             for element in elements:
                 element_text = await element.text_content()
                 if element_text and text in element_text:
-                    await element.click()
+                    await element.click(timeout=5000)
                     return True
             self.logger.info(f"Element with text '{text}' not found.")
             return False
@@ -92,7 +96,7 @@ class MarketTabNavigator:
                     more_element = await page.query_selector(selector)
                     if more_element:
                         text = await more_element.text_content()
-                        if text and ("more" in text.lower() or "..." in text):
+                        if text and len(text.strip()) < 50 and ("more" in text.lower() or "..." in text):
                             self.logger.info(f"Clicking 'More' button: '{text.strip()}'")
                             await more_element.click()
                             more_clicked = True

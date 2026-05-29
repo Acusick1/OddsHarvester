@@ -85,7 +85,7 @@ class SelectionManager:
             if not click_element:
                 self.logger.error(f"{strategy.name} target element not found for: {target_value}")
                 return False
-            await click_element.click()
+            await click_element.click(timeout=5000)
 
             try:
                 await page.wait_for_function(
