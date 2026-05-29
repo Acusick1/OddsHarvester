@@ -7,6 +7,13 @@ class OddsPortalSelectors:
     # Cookie banner
     COOKIE_BANNER = "#onetrust-accept-btn-handler"
 
+    # OneTrust GDPR preference center (purposes consent dialog)
+    GDPR_PREFERENCE_CENTER = "#onetrust-pc-sdk"
+    GDPR_PREFERENCE_CENTER_BACKDROP = ".onetrust-pc-dark-filter"
+
+    # Bookmaker promotional overlay that blocks all page interactions
+    OVERLAY_MODAL = "div.overlay-bookie-modal"
+
     # Market navigation tabs
     MARKET_TAB_SELECTORS: ClassVar[list[str]] = [
         "ul.visible-links.bg-black-main.odds-tabs > li",

@@ -82,3 +82,66 @@ class TestCookieDismisser:
         assert result is True
         mock_page.wait_for_selector.assert_called_once()
         mock_page.click.assert_called_once()
+
+    # =============================================================================
+    # GDPR PREFERENCE CENTER TESTS
+    # =============================================================================
+
+    @pytest.mark.asyncio
+    async def test_dismiss_gdpr_consent_removed(self, dismisser, mock_page):
+        """Preference center present and removed from the DOM."""
+        mock_page.evaluate = AsyncMock(return_value=1)
+
+        result = await dismisser.dismiss_gdpr_consent(mock_page)
+        assert result is True
+        mock_page.evaluate.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_dismiss_gdpr_consent_absent(self, dismisser, mock_page):
+        """Nothing removed when the preference center is not in the DOM."""
+        mock_page.evaluate = AsyncMock(return_value=0)
+
+        result = await dismisser.dismiss_gdpr_consent(mock_page)
+        assert result is False
+
+    @pytest.mark.asyncio
+    async def test_dismiss_gdpr_consent_error(self, dismisser, mock_page):
+        """Errors are swallowed and reported as failure."""
+        mock_page.evaluate = AsyncMock(side_effect=Exception("boom"))
+
+        result = await dismisser.dismiss_gdpr_consent(mock_page)
+        assert result is False
+
+    # =============================================================================
+    # BOOKMAKER OVERLAY MODAL TESTS
+    # =============================================================================
+
+    @pytest.mark.asyncio
+    async def test_dismiss_overlay_modal_clicked(self, dismisser, mock_page):
+        """Overlay present and dismissed via the close button."""
+        mock_page.wait_for_selector = AsyncMock(return_value=AsyncMock())
+        mock_page.evaluate = AsyncMock(return_value="clicked")
+
+        result = await dismisser.dismiss_overlay_modal(mock_page)
+        assert result is True
+        mock_page.evaluate.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_dismiss_overlay_modal_removed_fallback(self, dismisser, mock_page):
+        """Overlay removed from the DOM when the close button is missing."""
+        mock_page.wait_for_selector = AsyncMock(return_value=AsyncMock())
+        mock_page.evaluate = AsyncMock(side_effect=["not_found", None])
+
+        result = await dismisser.dismiss_overlay_modal(mock_page)
+        assert result is True
+        assert mock_page.evaluate.call_count == 2
+
+    @pytest.mark.asyncio
+    async def test_dismiss_overlay_modal_absent(self, dismisser, mock_page):
+        """No overlay present (selector times out)."""
+        from playwright.async_api import TimeoutError as PlaywrightTimeoutError
+
+        mock_page.wait_for_selector = AsyncMock(side_effect=PlaywrightTimeoutError("timeout"))
+
+        result = await dismisser.dismiss_overlay_modal(mock_page)
+        assert result is False

@@ -273,8 +273,10 @@ class OddsPortalScraper(BaseScraper):
         Args:
             page: Playwright page instance.
         """
-        await self.set_odds_format(page=page)
         await self.cookie_dismisser.dismiss(page=page)
+        await self.cookie_dismisser.dismiss_gdpr_consent(page=page)
+        await self.cookie_dismisser.dismiss_overlay_modal(page=page)
+        await self.set_odds_format(page=page)
 
     async def _get_pagination_info(self, page: Page, max_pages: int | None) -> list[int]:
         """

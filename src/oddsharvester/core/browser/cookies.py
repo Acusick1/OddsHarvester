@@ -42,3 +42,90 @@ class CookieDismisser:
         except Exception as e:
             self.logger.error(f"Error while dismissing cookie banner: {e}")
             return False
+
+    async def dismiss_gdpr_consent(self, page: Page) -> bool:
+        """Remove the OneTrust GDPR preference center from the DOM.
+
+        The preference center is always present in the DOM, even when hidden.
+        Its list items contain text like "More", which the market-tab "More"
+        dropdown logic can match instead of the real navigation element.
+        Unconditionally removing it and its backdrop prevents that.
+
+        Returns True if an element was removed, False otherwise.
+        """
+        try:
+            removed = await page.evaluate(
+                """(args) => {
+                    let count = 0;
+                    for (const sel of args) {
+                        const el = document.querySelector(sel);
+                        if (el) { el.remove(); count++; }
+                    }
+                    return count;
+                }""",
+                [
+                    OddsPortalSelectors.GDPR_PREFERENCE_CENTER,
+                    OddsPortalSelectors.GDPR_PREFERENCE_CENTER_BACKDROP,
+                ],
+            )
+            if removed > 0:
+                self.logger.info("OneTrust preference center removed from DOM.")
+                return True
+            return False
+
+        except Exception as e:
+            self.logger.error(f"Error removing OneTrust preference center: {e}")
+            return False
+
+    async def dismiss_overlay_modal(self, page: Page, timeout: int = 2000) -> bool:
+        """Dismiss the bookmaker promotional overlay if present.
+
+        This modal intercepts all pointer events and causes every subsequent
+        click to time out. It reappears on each navigation, so this must be
+        called per-page. Clicks the close button via a synthetic event, falling
+        back to removing the element from the DOM.
+
+        Returns True if an overlay was found and dismissed, False otherwise.
+        """
+        selector = OddsPortalSelectors.OVERLAY_MODAL
+        close_btn_selector = f"{selector} svg.cursor-pointer"
+
+        try:
+            overlay = await page.wait_for_selector(selector, state="visible", timeout=timeout)
+            if overlay is None:
+                return False
+
+            self.logger.info("Bookmaker overlay modal detected. Dismissing...")
+
+            dismissed = await page.evaluate(
+                """(sel) => {
+                    const btn = document.querySelector(sel);
+                    if (btn) {
+                        btn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+                        return 'clicked';
+                    }
+                    return 'not_found';
+                }""",
+                close_btn_selector,
+            )
+
+            if dismissed == "clicked":
+                self.logger.info("Overlay dismissed via close button.")
+                return True
+
+            await page.evaluate(
+                """(sel) => {
+                    const el = document.querySelector(sel);
+                    if (el) el.remove();
+                }""",
+                selector,
+            )
+            self.logger.warning("Overlay removed from DOM (close button not found).")
+            return True
+
+        except PlaywrightTimeoutError:
+            return False
+
+        except Exception as e:
+            self.logger.error(f"Error dismissing overlay modal: {e}")
+            return False

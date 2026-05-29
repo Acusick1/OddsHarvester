@@ -580,6 +580,10 @@ class BaseScraper:
             # Wait a bit for dynamic content to load
             await page.wait_for_timeout(DYNAMIC_CONTENT_WAIT_MS)
 
+            # Dismiss overlays that intercept clicks before interacting with the page
+            await self.cookie_dismisser.dismiss_gdpr_consent(page=page)
+            await self.cookie_dismisser.dismiss_overlay_modal(page=page)
+
             # Apply bookmaker filter before extracting odds
             await self.selection_manager.ensure_selected(
                 page=page,
