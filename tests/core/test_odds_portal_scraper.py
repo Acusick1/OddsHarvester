@@ -515,3 +515,35 @@ class TestFillPaginationGaps:
         pages = list(range(1, 11))
         result = scraper._fill_pagination_gaps(pages)
         assert result == list(range(1, 11))
+
+
+@pytest.mark.asyncio
+@patch("oddsharvester.core.odds_portal_scraper.URLBuilder")
+async def test_discover_links(url_builder_mock, setup_scraper_mocks):
+    """discover_links collects links without extracting odds."""
+    mocks = setup_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+
+    url_builder_mock.get_historic_matches_url.return_value = (
+        "https://oddsportal.com/football/england/premier-league-2023"
+    )
+    scraper._prepare_page_for_scraping = AsyncMock()
+    scraper._get_pagination_info = AsyncMock(return_value=[1, 2])
+    scraper._collect_match_links = AsyncMock(
+        return_value=LinkCollectionResult(
+            links=["https://oddsportal.com/match1", "https://oddsportal.com/match2"],
+            successful_pages=2,
+            failed_pages=[],
+        )
+    )
+    # Link discovery must not touch odds extraction.
+    scraper.extract_match_odds = AsyncMock()
+
+    links = await scraper.discover_links(sport="football", league="premier-league", season="2023", max_pages=2)
+
+    assert links == ["https://oddsportal.com/match1", "https://oddsportal.com/match2"]
+    page_mock.goto.assert_called_once()
+    scraper._prepare_page_for_scraping.assert_called_once_with(page=page_mock)
+    scraper._get_pagination_info.assert_called_once_with(page=page_mock, max_pages=2)
+    scraper.extract_match_odds.assert_not_called()

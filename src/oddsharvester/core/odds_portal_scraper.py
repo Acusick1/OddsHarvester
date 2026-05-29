@@ -65,6 +65,36 @@ class OddsPortalScraper(BaseScraper):
         """Stops Playwright and cleans up resources."""
         await self.playwright_manager.cleanup()
 
+    async def discover_links(
+        self,
+        sport: str,
+        league: str,
+        season: str,
+        max_pages: int | None = None,
+    ) -> list[str]:
+        """Collect match links for a season without extracting odds."""
+        current_page = self.playwright_manager.page
+        if not current_page:
+            raise RuntimeError("Playwright has not been initialized. Call `start_playwright()` first.")
+
+        base_url = URLBuilder.get_historic_matches_url(
+            sport=sport, league=league, season=season, base_url=self.base_url
+        )
+        self.logger.info(f"Discovering links for {sport} - {league} - {season}")
+        self.logger.info(f"Base URL: {base_url}")
+
+        await current_page.goto(base_url)
+        await self._prepare_page_for_scraping(page=current_page)
+
+        pages_to_scrape = await self._get_pagination_info(page=current_page, max_pages=max_pages)
+        link_result = await self._collect_match_links(base_url=base_url, pages_to_scrape=pages_to_scrape)
+
+        if link_result.failed_pages:
+            self.logger.warning(f"Failed to collect links from pages: {link_result.failed_pages}")
+
+        self.logger.info(f"Discovered {len(link_result.links)} unique match links")
+        return link_result.links
+
     async def scrape_historic(
         self,
         sport: str,

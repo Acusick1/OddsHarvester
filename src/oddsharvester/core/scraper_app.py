@@ -350,3 +350,65 @@ async def retry_scrape(scrape_func, *args, **kwargs) -> ScrapeResult | None:
 
     logger.error(f"Max retries exceeded after {retry_result.attempts} attempts.")
     return None
+
+
+async def discover_links(
+    sport: str,
+    leagues: list[str],
+    season: str,
+    max_pages: int | None = None,
+    headless: bool = True,
+    proxy_url: str | None = None,
+    proxy_user: str | None = None,
+    proxy_pass: str | None = None,
+    browser_user_agent: str | None = None,
+    browser_locale_timezone: str | None = None,
+    browser_timezone_id: str | None = None,
+    base_url: str | None = None,
+) -> list[str]:
+    """Discover match links for a single league/season without extracting odds."""
+    if not leagues or len(leagues) != 1:
+        raise ValueError("discover_links requires exactly one league")
+
+    proxy_manager = ProxyManager(proxy_url=proxy_url, proxy_user=proxy_user, proxy_pass=proxy_pass)
+    SportMarketRegistrar.register_all_markets()
+    playwright_manager = PlaywrightManager()
+    cookie_dismisser = CookieDismisser()
+    selection_manager = SelectionManager()
+    tab_navigator = MarketTabNavigator()
+    scroller = PageScroller()
+
+    market_extractor = OddsPortalMarketExtractor(
+        scroller=scroller,
+        tab_navigator=tab_navigator,
+        selection_manager=selection_manager,
+    )
+
+    scraper = OddsPortalScraper(
+        playwright_manager=playwright_manager,
+        market_extractor=market_extractor,
+        scroller=scroller,
+        cookie_dismisser=cookie_dismisser,
+        selection_manager=selection_manager,
+        base_url=base_url,
+    )
+
+    try:
+        proxy_config = proxy_manager.get_current_proxy()
+        await scraper.start_playwright(
+            headless=headless,
+            browser_user_agent=browser_user_agent,
+            browser_locale_timezone=browser_locale_timezone,
+            browser_timezone_id=browser_timezone_id,
+            proxy=proxy_config,
+        )
+
+        return await scraper.discover_links(
+            sport=sport,
+            league=leagues[0],
+            season=season,
+            max_pages=max_pages,
+        )
+
+    finally:
+        await scraper.stop_playwright()
