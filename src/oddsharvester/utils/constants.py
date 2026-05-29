@@ -90,6 +90,7 @@ PLAYWRIGHT_BROWSER_ARGS_DOCKER = [
     "--no-sandbox",
     "--headless",
     "--disable-gpu",
+    "--single-process",
     "--disable-background-networking",
     "--disable-popup-blocking",
     "--disable-extensions",
